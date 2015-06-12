@@ -1,21 +1,38 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
 func main() {
-	fmt.Println("Running!")
 	b := NewBoard()
+	Solve(b, 0, 0)
 	b.Print()
+}
 
-	fmt.Printf("Possible vals at 0, 0: %v\n", b.AvailableVals(8, 8))
-	x, y := b.TopLeftCoord(1, 1)
-	fmt.Printf("Top-left for 1,1: %v,%v\n", x, y)
-	x, y = b.TopLeftCoord(8, 8)
-	fmt.Printf("Top-left for 8,8: %v,%v\n", x, y)
-	fmt.Printf("Available for 1,1: %v\n", b.AvailableVals(0, 0))
+func Solve(b *Board, x int, y int) (err error) {
+	// Get the available values for this cell
+	a := b.AvailableVals(x, y)
+	for v := range a {
+		b.cells[x][y] = a[v]
+		if nx, ny := b.NextEmptyCell(x, y); nx != -1 {
+			// If an error is returned, continue in the for loop
+			if err := Solve(b, nx, ny); err != nil {
+				fmt.Println(err)
+				continue
+			} else {
+				return nil
+			}
+		} else {
+			// No more cells. We're done
+			return nil
+		}
+	}
+	b.cells[x][y] = 0
+	return errors.New(fmt.Sprintf("No solution at %v, %v. Setting cell to 0", x, y))
 }
 
 type Board struct {
@@ -24,7 +41,19 @@ type Board struct {
 	padding int // padding when printing
 }
 
+func (b *Board) NextEmptyCell(x int, y int) (int, int) {
+	// -1 if last cell
+	if x+1 == b.slen*b.slen && y+1 == b.slen*b.slen {
+		return -1, -1
+	} else if x+1 < b.slen*b.slen {
+		return x + 1, y
+	} else {
+		return 0, y + 1
+	}
+}
+
 func (b *Board) Print() {
+	fmt.Printf("\n\n\n")
 	var c string
 	for x := range b.cells {
 		if x%b.slen == 0 {
@@ -37,7 +66,7 @@ func (b *Board) Print() {
 			if b.cells[x][y] == 0 {
 				c = "*"
 			} else {
-				c = string(b.cells[x][y])
+				c = strconv.Itoa(b.cells[x][y])
 			}
 			fmt.Printf("%v ", c)
 		}
