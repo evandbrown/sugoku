@@ -8,9 +8,35 @@ import (
 )
 
 func main() {
-	b := NewBoard()
+	b := NewBoard(2)
 	Solve(b, 0, 0)
 	b.Print()
+
+	b = NewBoard(3)
+	Solve(b, 0, 0)
+	b.Print()
+
+	b = NewBoard(4)
+	Solve(b, 0, 0)
+	b.Print()
+
+	b = NewBoard(5)
+	Solve(b, 0, 0)
+	b.Print()
+}
+
+func NewBoard(slen int) *Board {
+	b := new(Board)
+	if slen == 0 {
+		slen = 3
+	}
+	b.slen = slen
+	b.padding = 5
+	b.cells = make([][]int, b.slen*b.slen)
+	for i := range b.cells {
+		b.cells[i] = make([]int, b.slen*b.slen)
+	}
+	return b
 }
 
 func Solve(b *Board, x int, y int) (err error) {
@@ -21,7 +47,7 @@ func Solve(b *Board, x int, y int) (err error) {
 		if nx, ny := b.NextEmptyCell(x, y); nx != -1 {
 			// If an error is returned, continue in the for loop
 			if err := Solve(b, nx, ny); err != nil {
-				fmt.Println(err)
+				//fmt.Println(err)
 				continue
 			} else {
 				return nil
@@ -57,7 +83,7 @@ func (b *Board) Print() {
 	var c string
 	for x := range b.cells {
 		if x%b.slen == 0 {
-			fmt.Println(strings.Repeat(" -", b.slen*b.slen+b.slen))
+			fmt.Println(strings.Repeat("-", b.slen*b.slen*3+(b.slen+1)*2-1))
 		}
 		for y := range b.cells[x] {
 			if y%b.slen == 0 {
@@ -68,12 +94,12 @@ func (b *Board) Print() {
 			} else {
 				c = strconv.Itoa(b.cells[x][y])
 			}
-			fmt.Printf("%v ", c)
+			fmt.Printf("%2s ", c)
 		}
 		fmt.Printf("|")
 		fmt.Println()
 	}
-	fmt.Println(strings.Repeat(" -", b.slen*b.slen+b.slen))
+	fmt.Println(strings.Repeat("-", b.slen*b.slen*3+(b.slen+1)*2-1))
 }
 
 func (b *Board) AvailableVals(x int, y int) []int {
@@ -141,15 +167,4 @@ func (b *Board) TopLeftCoord(x int, y int) (xx int, yy int) {
 		yy = y - y%b.slen
 	}
 	return
-}
-
-func NewBoard() *Board {
-	b := new(Board)
-	b.slen = 3
-	b.padding = 5
-	b.cells = make([][]int, b.slen*b.slen)
-	for i := range b.cells {
-		b.cells[i] = make([]int, b.slen*b.slen)
-	}
-	return b
 }
