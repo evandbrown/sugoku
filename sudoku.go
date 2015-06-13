@@ -3,26 +3,17 @@ package main
 import (
 	"errors"
 	"fmt"
+	//	"sort"
+	"math/rand"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func main() {
-	b := NewBoard(2)
+	b := NewBoard(4)
 	Solve(b, 0, 0)
-	b.Print()
-
-	b = NewBoard(3)
-	Solve(b, 0, 0)
-	b.Print()
-
-	b = NewBoard(4)
-	Solve(b, 0, 0)
-	b.Print()
-
-	b = NewBoard(5)
-	Solve(b, 0, 0)
-	b.Print()
+	fmt.Println()
 }
 
 func NewBoard(slen int) *Board {
@@ -39,14 +30,17 @@ func NewBoard(slen int) *Board {
 	return b
 }
 
-func Solve(b *Board, x int, y int) (err error) {
+func Solve(b *Board, r int, c int) (err error) {
 	// Get the available values for this cell
-	a := b.AvailableVals(x, y)
+	fmt.Printf("\033[3;1H")
+	time.Sleep(10 * time.Millisecond)
+	a := b.AvailableVals(r, c)
 	for v := range a {
-		b.cells[x][y] = a[v]
-		if nx, ny := b.NextEmptyCell(x, y); nx != -1 {
+		b.cells[r][c] = a[v]
+		fmt.Printf(b.Print())
+		if nr, nc := b.NextEmptyCell(r, c); nr != -1 {
 			// If an error is returned, continue in the for loop
-			if err := Solve(b, nx, ny); err != nil {
+			if err := Solve(b, nr, nc); err != nil {
 				//fmt.Println(err)
 				continue
 			} else {
@@ -57,8 +51,8 @@ func Solve(b *Board, x int, y int) (err error) {
 			return nil
 		}
 	}
-	b.cells[x][y] = 0
-	return errors.New(fmt.Sprintf("No solution at %v, %v. Setting cell to 0", x, y))
+	b.cells[r][c] = 0
+	return errors.New(fmt.Sprintf("No solution at %v, %v. Setting cell to 0", r, c))
 }
 
 type Board struct {
@@ -67,44 +61,52 @@ type Board struct {
 	padding int // padding when printing
 }
 
-func (b *Board) NextEmptyCell(x int, y int) (int, int) {
+func (b *Board) NextEmptyCell(r int, c int) (int, int) {
 	// -1 if last cell
-	if x+1 == b.slen*b.slen && y+1 == b.slen*b.slen {
+	if r+1 == b.slen*b.slen && c+1 == b.slen*b.slen {
 		return -1, -1
-	} else if x+1 < b.slen*b.slen {
-		return x + 1, y
+	} else if c+1 < b.slen*b.slen {
+		return r, c + 1
 	} else {
-		return 0, y + 1
+		return r + 1, 0
 	}
 }
 
-func (b *Board) Print() {
-	fmt.Printf("\n\n\n")
-	var c string
-	for x := range b.cells {
-		if x%b.slen == 0 {
-			fmt.Println(strings.Repeat("-", b.slen*b.slen*3+(b.slen+1)*2-1))
+func (b *Board) Print() string {
+	var board string
+
+	var v string
+	for r := range b.cells {
+		if r%b.slen == 0 {
+			board += fmt.Sprintf("%v\n", strings.Repeat("-", b.slen*b.slen*3+(b.slen+1)*2-1))
 		}
-		for y := range b.cells[x] {
-			if y%b.slen == 0 {
-				fmt.Printf("| ")
+		for c := range b.cells[r] {
+			if c%b.slen == 0 {
+				board += fmt.Sprintf("| ")
 			}
-			if b.cells[x][y] == 0 {
-				c = "*"
+			if b.cells[r][c] == 0 {
+				v = "*"
 			} else {
-				c = strconv.Itoa(b.cells[x][y])
+				v = strconv.Itoa(b.cells[r][c])
 			}
-			fmt.Printf("%2s ", c)
+			board += fmt.Sprintf("%2s ", v)
 		}
-		fmt.Printf("|")
-		fmt.Println()
+		board += fmt.Sprintf("|\n")
 	}
-	fmt.Println(strings.Repeat("-", b.slen*b.slen*3+(b.slen+1)*2-1))
+	board += fmt.Sprintf("%v", strings.Repeat("-", b.slen*b.slen*3+(b.slen+1)*2-1))
+	return board
 }
 
-func (b *Board) AvailableVals(x int, y int) []int {
-	used := append(b.valsInRow(y), b.valsInCol(x)...)
-	used = append(used, b.valsInSquare(x, y)...)
+func (b *Board) Shuffle(a []int) {
+	for i := range a {
+		j := rand.Intn(i + 1)
+		a[i], a[j] = a[j], a[i]
+	}
+}
+
+func (b *Board) AvailableVals(r int, c int) []int {
+	used := append(b.valsInRow(r), b.valsInCol(c)...)
+	used = append(used, b.valsInSquare(r, c)...)
 	p := b.possibleVals()
 
 	for i := range used {
@@ -114,6 +116,8 @@ func (b *Board) AvailableVals(x int, y int) []int {
 	for k := range p {
 		available = append(available, k)
 	}
+	//sort.Ints(available)
+	b.Shuffle(available)
 	return available
 }
 
@@ -125,46 +129,46 @@ func (b *Board) possibleVals() map[int]bool {
 	}
 	return p
 }
-func (b *Board) valsInRow(y int) []int {
+func (b *Board) valsInRow(r int) []int {
 	vals := make([]int, b.slen*b.slen)
 	for i := 0; i < len(vals); i++ {
-		vals[i] = b.cells[i][y]
+		vals[i] = b.cells[r][i]
 	}
 	return vals
 }
 
-func (b *Board) valsInCol(x int) []int {
+func (b *Board) valsInCol(c int) []int {
 	vals := make([]int, b.slen*b.slen)
 	for i := 0; i < len(vals); i++ {
-		vals[i] = b.cells[x][i]
+		vals[i] = b.cells[i][c]
 	}
 	return vals
 }
 
-func (b *Board) valsInSquare(x int, y int) []int {
+func (b *Board) valsInSquare(r int, c int) []int {
 	vals := make([]int, b.slen*b.slen*b.slen)
 
-	xx, yy := b.TopLeftCoord(x, y)
+	rr, cc := b.TopLeftCoord(r, c)
 	i := 0
-	for x = xx; x < xx+b.slen; x++ {
-		for y = yy; y < yy+b.slen; y++ {
-			vals[i] = b.cells[x][y]
+	for r = rr; r < rr+b.slen; r++ {
+		for c = cc; c < cc+b.slen; c++ {
+			vals[i] = b.cells[r][c]
 			i++
 		}
 	}
 	return vals
 }
 
-func (b *Board) TopLeftCoord(x int, y int) (xx int, yy int) {
-	if x%b.slen == 0 {
-		xx = x
+func (b *Board) TopLeftCoord(r int, c int) (rr int, cc int) {
+	if r%b.slen == 0 {
+		rr = r
 	} else {
-		xx = x - x%b.slen
+		rr = r - r%b.slen
 	}
-	if y%b.slen == 0 {
-		yy = y
+	if c%b.slen == 0 {
+		cc = c
 	} else {
-		yy = y - y%b.slen
+		cc = c - c%b.slen
 	}
 	return
 }
