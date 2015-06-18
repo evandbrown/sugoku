@@ -20,6 +20,7 @@ func main() {
 	b.cells[6] = []int{2, 0, 0, 5, 0, 0, 4, 0, 0}
 	b.cells[7] = []int{0, 0, 0, 0, 2, 6, 0, 0, 7}
 	b.cells[8] = []int{0, 0, 5, 0, 0, 0, 0, 2, 3}
+	b = NewBoard(4)
 	r, c := b.NextEmptyCell(0, 0)
 	Solve(b, r, c)
 	fmt.Println()
@@ -70,6 +71,9 @@ type Board struct {
 }
 
 func (b *Board) NextEmptyCell(r int, c int) (int, int) {
+	if r == 0 && c == 0 && b.cells[r][c] == 0 {
+		return r, c
+	}
 	for r, c = b.NextCell(r, c); r != -1 && b.cells[r][c] != 0; {
 		r, c = b.NextCell(r, c)
 	}
