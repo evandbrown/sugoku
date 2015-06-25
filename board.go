@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -17,15 +16,15 @@ type Board struct {
 }
 
 type Square struct {
-	possible []int
-	locked   bool
-	val      int
-	row      int
-	col      int
+	available map[int]bool
+	locked    bool
+	val       int
+	row       int
+	col       int
 }
 
 func (s *Square) String() string {
-	return fmt.Sprintf("(%v,%v) = %v %v", s.row+1, s.col+1, s.val, s.possible)
+	return fmt.Sprintf("(%v,%v) = %v %v", s.row, s.col, s.val, s.available)
 }
 
 func (s *Square) Key() string {
@@ -33,11 +32,35 @@ func (s *Square) Key() string {
 }
 
 func (s *Square) AvailString() string {
-	return fmt.Sprintf("%v %v (%v,%v)", s.val, s.possible, s.row+1, s.col+1)
+	return fmt.Sprintf("(%v,%v) %v %v ", s.row, s.col, MapToArr(s.available), s.val)
 }
+
+func MapToArr(a map[int]bool) []int {
+	v := make([]int, 0)
+	i := 0
+	for val, avail := range a {
+		if avail {
+			v = append(v, val)
+			i++
+		}
+	}
+	return v
+}
+
 func (s *Square) ValString() string {
 	return fmt.Sprintf("%v", strconv.Itoa(s.val))
 }
+
+func (s *Square) NumAvailable() int {
+	i := 0
+	for _, a := range s.available {
+		if a {
+			i++
+		}
+	}
+	return i
+}
+
 func (b *Board) Peers(s *Square) []*Square {
 	peers := make(map[string]*Square)
 	all := append(b.squaresInRow(s), b.squaresInCol(s)...)
@@ -56,29 +79,56 @@ func (b *Board) Peers(s *Square) []*Square {
 	return all
 }
 
-func (b *Board) Propagate(s *Square, setPeers bool) error {
-	peers := b.Peers(s)
-	for i := range peers {
-		peers[i].possible = b.availableVals(peers[i])
-		if len(peers[i].possible) == 0 && peers[i].val == 0 {
-			return errors.New(fmt.Sprintf("Cannot propagate %v as it leaves no options for %v\n", s, peers[i]))
-		}
-		if len(peers[i].possible) == 1 && peers[i].val == 0 && setPeers {
-			return b.Set(peers[i], peers[i].possible[0])
-		}
+func (b *Board) InitPossible() {
+	for _, s := range b.Flatten() {
+		s.available = b.availableVals(s)
 	}
-	return nil
 }
 
-func (b *Board) Set(s *Square, val int) error {
-	s.val = val
-	if err := b.Propagate(s, true); err != nil {
-		s.val = 0
-		b.Propagate(s, false)
-		return errors.New(fmt.Sprintf("Cannot set %v at %v as it causes a problem on propagation (%v)", val, s, err))
+// Eliminate a value from all of a square's peers.
+func (b *Board) Eliminate(s *Square, val int) ([]*Square, error) {
+	solved := make([]*Square, 0)
+	peers := b.Peers(s)
+	for k, _ := range peers {
+		if peers[k].NumAvailable() == 1 && peers[k].val == 0 {
+			b.Uneliminate(s, val)
+			return nil, errors.New(fmt.Sprintf("Can't eliminate %v from %v because it's the last value. All peer possibilities were restored", val, peers[k]))
+		}
+		if peers[k].NumAvailable() == 2 {
+			solved = append(solved, peers[k])
+		}
+		peers[k].available[val] = false
 	}
-	//fmt.Printf("\033[3;1H")
-	return nil
+	return solved, nil
+}
+
+// Add a value to a square's list of available values
+func (b *Board) Uneliminate(s *Square, val int) {
+	peers := b.Peers(s)
+	for k, _ := range peers {
+		if _, ok := peers[k].available[val]; ok {
+			peers[k].available[val] = true
+		}
+	}
+}
+
+func (b *Board) Set(s *Square, val int) ([]*Square, error) {
+	//	fmt.Printf("\033[3;1H")
+	fmt.Println(b)
+	fmt.Println("")
+	if val == 0 {
+		b.Uneliminate(s, s.val)
+		s.val = 0
+		return nil, nil
+	} else {
+		solved, err := b.Eliminate(s, val)
+		if err != nil {
+			return nil, errors.New(fmt.Sprintf("Cannot set %v at %v as it causes a problem on propagation (%v)", val, s, err))
+		} else {
+			s.val = val
+			return solved, nil
+		}
+	}
 }
 
 func (b *Board) Duplicate() *Board {
@@ -121,17 +171,6 @@ func (b *Board) NextSquare(s *Square) *Square {
 	}
 }
 
-func (b *Board) ClearForward(s *Square) {
-	sq := b.NextSquare(s)
-	if sq.row == -1 {
-		return
-	}
-	if !sq.locked {
-		sq.val = 0
-	}
-	b.ClearForward(sq)
-}
-
 func (b *Board) String() string {
 	var board string
 
@@ -144,6 +183,7 @@ func (b *Board) String() string {
 				board += fmt.Sprintf("| ")
 			}
 			board += fmt.Sprintf("%2s ", b.squares[r][c].ValString())
+			//board += fmt.Sprintf("%38s ", b.squares[r][c].AvailString())
 		}
 		board += fmt.Sprintf("|\n")
 	}
@@ -158,19 +198,15 @@ func (b *Board) Shuffle(a []int) {
 	}
 }
 
-func (b *Board) availableVals(s *Square) []int {
+func (b *Board) availableVals(s *Square) map[int]bool {
 	p := b.possibleVals()
 	peers := b.Peers(s)
 	for i := range peers {
-		delete(p, peers[i].val)
+		if peers[i].val != 0 {
+			delete(p, peers[i].val)
+		}
 	}
-	available := make([]int, 0, len(p))
-	for k := range p {
-		available = append(available, k)
-	}
-	sort.Ints(available)
-	//b.Shuffle(available)
-	return available
+	return p
 }
 
 func (b *Board) possibleVals() map[int]bool {
@@ -266,6 +302,7 @@ func NewBoard(slen int) *Board {
 
 func NewSquare(val int, row int, col int) *Square {
 	s := &Square{val: val, row: row, col: col}
+	s.available = make(map[int]bool)
 	if s.val != 0 {
 		s.locked = true
 	}
