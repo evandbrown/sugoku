@@ -90,7 +90,7 @@ func (b *Board) Eliminate(s *Square, val int) ([]*Square, error) {
 	solved := make([]*Square, 0)
 	peers := b.Peers(s)
 	for k, _ := range peers {
-		if peers[k].NumAvailable() == 1 && peers[k].val == 0 {
+		if peers[k].NumAvailable() == 1 && peers[k].val == 0 && peers[k].val == val {
 			b.Uneliminate(s, val)
 			return nil, errors.New(fmt.Sprintf("Can't eliminate %v from %v because it's the last value. All peer possibilities were restored", val, peers[k]))
 		}
@@ -106,16 +106,13 @@ func (b *Board) Eliminate(s *Square, val int) ([]*Square, error) {
 func (b *Board) Uneliminate(s *Square, val int) {
 	peers := b.Peers(s)
 	for k, _ := range peers {
-		if _, ok := peers[k].available[val]; ok {
-			peers[k].available[val] = true
-		}
+		peers[k].available = b.availableVals(s)
 	}
 }
 
 func (b *Board) Set(s *Square, val int) ([]*Square, error) {
 	//	fmt.Printf("\033[3;1H")
-	fmt.Println(b)
-	fmt.Println("")
+	//	fmt.Println(b)
 	if val == 0 {
 		b.Uneliminate(s, s.val)
 		s.val = 0
