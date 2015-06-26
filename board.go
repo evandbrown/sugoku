@@ -32,7 +32,7 @@ func (s *Square) Key() string {
 }
 
 func (s *Square) AvailString() string {
-	return fmt.Sprintf("(%v,%v) %v %v ", s.row, s.col, MapToArr(s.available), s.val)
+	return fmt.Sprintf("%v %v ", MapToArr(s.available), s.val)
 }
 
 func MapToArr(a map[int]bool) []int {
@@ -105,17 +105,20 @@ func (b *Board) Eliminate(s *Square, val int) ([]*Square, error) {
 // Add a value to a square's list of available values
 func (b *Board) Uneliminate(s *Square, val int) {
 	peers := b.Peers(s)
+	peers = append(peers, s)
+	s.available[val] = true
 	for k, _ := range peers {
-		peers[k].available = b.availableVals(s)
+		peers[k].available = b.availableVals(peers[k])
 	}
 }
 
 func (b *Board) Set(s *Square, val int) ([]*Square, error) {
-	//	fmt.Printf("\033[3;1H")
-	//	fmt.Println(b)
+	//fmt.Printf("\033[3;1H")
+	//fmt.Println(b)
+	//	fmt.Println("")
 	if val == 0 {
-		b.Uneliminate(s, s.val)
 		s.val = 0
+		b.Uneliminate(s, val)
 		return nil, nil
 	} else {
 		solved, err := b.Eliminate(s, val)

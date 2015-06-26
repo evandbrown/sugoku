@@ -17,7 +17,7 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	//fmt.Println(v1)
+	fmt.Println(v1)
 }
 
 func InitialPropagation(b *Board) error {
@@ -31,11 +31,13 @@ func Solve(b *Board) error {
 		fmt.Println("Finished!!")
 		return nil
 	}
-	try := make([]int, len(s.available))
+	try := make([]int, 0)
 	i := 0
-	for val, _ := range s.available {
-		try[i] = val
-		i++
+	for val, ok := range s.available {
+		if ok {
+			try = append(try, val)
+			i++
+		}
 	}
 	for _, val := range try {
 		_, err := b.Set(s, val)
