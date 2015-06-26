@@ -7,28 +7,37 @@ import (
 )
 
 func main() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
-	v1 := HardBoard()
-	if err := InitialPropagation(v1); err != nil {
-		fmt.Println("Invalid board")
-		return
-	}
-	if err := Solve(v1); err != nil {
+	runtime.GOMAXPROCS(1)
+	//runtime.GOMAXPROCS(runtime.NumCPU())
+	v1 := ParseBoard(BOARD_HARD_1)
+	status := make(chan *Board)
+	go printProgress(status)
+	if err := solve(v1, status); err != nil {
 		fmt.Println(err)
 		return
 	}
-	fmt.Println(v1)
+	<-status
+	if !SHOW_STATUS {
+		fmt.Println(v1)
+	}
 }
 
-func InitialPropagation(b *Board) error {
-	b.InitPossible()
-	return nil
+func printProgress(status chan *Board) {
+	for b := range status {
+		if SHOW_STATUS {
+			if STATUS_OVERWRITE {
+				fmt.Printf("\033[3;1H")
+			}
+			fmt.Println(b)
+		}
+	}
 }
 
-func Solve(b *Board) error {
-	s := b.NextEmptySquare()
-	if s.row == -1 {
-		fmt.Println("Finished!!")
+func solve(b *Board, status chan *Board) error {
+	s := b.NextEasiestSquare()
+	status <- b
+	if s == nil {
+		close(status)
 		return nil
 	}
 	try := make([]int, 0)
@@ -44,7 +53,7 @@ func Solve(b *Board) error {
 		if err != nil {
 			return errors.New(fmt.Sprintf("There was an error trying to solve %v with %v: %v", s, val, err))
 		} else {
-			if err = Solve(b); err != nil {
+			if err = solve(b, status); err != nil {
 				b.Set(s, 0)
 				continue
 			} else {
@@ -54,3 +63,11 @@ func Solve(b *Board) error {
 	}
 	return errors.New(fmt.Sprintf("Failed to solve %v with all values %v", s, try))
 }
+
+const (
+	BOARD_EMPTY      = "................................................................................."
+	BOARD_HARD_1     = ".15.....................8....6....1..3.2.....2.............8..2........6........."
+	BOARD_HARD_2     = "....7..2.8.......6.1.2.5...9.54....8.........3....85.1...3.2.8.4.......9.7..6...."
+	SHOW_STATUS      = false
+	STATUS_OVERWRITE = true
+)

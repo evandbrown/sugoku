@@ -113,9 +113,6 @@ func (b *Board) Uneliminate(s *Square, val int) {
 }
 
 func (b *Board) Set(s *Square, val int) ([]*Square, error) {
-	//fmt.Printf("\033[3;1H")
-	//fmt.Println(b)
-	//	fmt.Println("")
 	if val == 0 {
 		s.val = 0
 		b.Uneliminate(s, val)
@@ -151,19 +148,37 @@ func (b *Board) Flatten() []*Square {
 	}
 	return squares
 }
+func (b *Board) Shuffle(a []int) {
+	for i := range a {
+		j := rand.Intn(i + 1)
+		a[i], a[j] = a[j], a[i]
+	}
+}
+
+func (b *Board) NextEasiestSquare() *Square {
+	var next, low *Square
+	for next = b.squares[0][0]; next != nil; next = b.NextSquare(next) {
+		if low == nil && next.val == 0 { // initialize low
+			low = next
+		}
+		if next.val == 0 && next.NumAvailable() < low.NumAvailable() { //Mark a new low
+			low = next
+		}
+	}
+	return low
+}
 
 func (b *Board) NextEmptySquare() *Square {
 	var s *Square
-	for s = b.squares[0][0]; s.row != -1 && s.val != 0; {
+	for s = b.squares[0][0]; s != nil && s.val != 0; {
 		s = b.NextSquare(s)
 	}
 	return s
 }
 
 func (b *Board) NextSquare(s *Square) *Square {
-	// -1 if last cell
 	if s.row+1 == b.slen*b.slen && s.col+1 == b.slen*b.slen {
-		return NewSquare(0, -1, -1)
+		return nil
 	} else if s.col+1 < b.slen*b.slen {
 		return b.squares[s.row][s.col+1]
 	} else {
@@ -189,13 +204,6 @@ func (b *Board) String() string {
 	}
 	board += fmt.Sprintf("%v\n", strings.Repeat("-", b.slen*b.slen*3+(b.slen+1)*2-1))
 	return board
-}
-
-func (b *Board) Shuffle(a []int) {
-	for i := range a {
-		j := rand.Intn(i + 1)
-		a[i], a[j] = a[j], a[i]
-	}
 }
 
 func (b *Board) availableVals(s *Square) map[int]bool {
@@ -263,30 +271,21 @@ func (b *Board) firstSquareInGroup(s *Square) *Square {
 	return b.squares[rr][cc]
 }
 
-func BoardFromS(s string) *Board {
+func ParseBoard(s string) *Board {
 	length := math.Sqrt(float64(len(s)))
 	sq := math.Sqrt(length)
-	board := NewBoard(int(sq))
+	board := _newBoard(int(sq))
 	for i, c := range s {
 		if c == '.' {
 			c = '0'
 		}
 		board.squares[i/9][i%9] = NewSquare(int(c-'0'), i/9, i%9)
 	}
+	board.InitPossible()
 	return board
 }
 
-func HardBoard() *Board {
-	b := BoardFromS(".15.....................8....6....1..3.2.....2.............8..2........6.........")
-	return b
-}
-
-func EmptyBoard() *Board {
-	b := BoardFromS(".................................................................................")
-	return b
-}
-
-func NewBoard(slen int) *Board {
+func _newBoard(slen int) *Board {
 	b := new(Board)
 	if slen == 0 {
 		slen = 3
@@ -296,7 +295,11 @@ func NewBoard(slen int) *Board {
 	b.squares = make([][]*Square, b.slen*b.slen)
 	for r := range b.squares {
 		b.squares[r] = make([]*Square, b.slen*b.slen)
+		for c := range b.squares[r] {
+			b.squares[r][c] = NewSquare(0, r, c)
+		}
 	}
+	b.InitPossible()
 	return b
 }
 
