@@ -4,40 +4,57 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"time"
 )
 
 func main() {
-	runtime.GOMAXPROCS(1)
-	//runtime.GOMAXPROCS(runtime.NumCPU())
-	v1 := ParseBoard(BOARD_HARD_1)
-	status := make(chan *Board)
-	go printProgress(status)
-	if err := solve(v1, status); err != nil {
-		fmt.Println(err)
-		return
+	runtime.GOMAXPROCS(runtime.NumCPU())
+	done := make(chan *Board)
+	defer close(done)
+	boards := make([]*Board, 2)
+	for i := range boards {
+		boards[i] = ParseBoard(BOARD_HARD_1)
+		go solve(boards[i], done)
 	}
-	<-status
-	if !SHOW_STATUS {
-		fmt.Println(v1)
-	}
+	printProgress(boards, done)
 }
 
-func printProgress(status chan *Board) {
-	for b := range status {
-		if SHOW_STATUS {
-			if STATUS_OVERWRITE {
-				fmt.Printf("\033[3;1H")
+func printProgress(boards []*Board, stop chan *Board) {
+	for {
+		select {
+		case fin := <-stop:
+			if SHOW_STATUS {
+				if STATUS_OVERWRITE {
+					fmt.Printf("\033[3;1H")
+				}
+				for _, b := range boards {
+					fmt.Println(".")
+					fmt.Println(b)
+				}
+			} else {
+				fmt.Println(fin)
 			}
-			fmt.Println(b)
+
+			return
+		default:
+			if SHOW_STATUS {
+				if STATUS_OVERWRITE {
+					fmt.Printf("\033[3;1H")
+				}
+				for _, b := range boards {
+					fmt.Println(".")
+					fmt.Println(b)
+				}
+			}
 		}
 	}
 }
 
-func solve(b *Board, status chan *Board) error {
+func solve(b *Board, done chan *Board) error {
+	time.Sleep(10 * time.Millisecond)
 	s := b.NextEasiestSquare()
-	status <- b
 	if s == nil {
-		close(status)
+		done <- b
 		return nil
 	}
 	try := make([]int, 0)
@@ -48,12 +65,13 @@ func solve(b *Board, status chan *Board) error {
 			i++
 		}
 	}
+	b.Shuffle(try)
 	for _, val := range try {
 		_, err := b.Set(s, val)
 		if err != nil {
 			return errors.New(fmt.Sprintf("There was an error trying to solve %v with %v: %v", s, val, err))
 		} else {
-			if err = solve(b, status); err != nil {
+			if err = solve(b, done); err != nil {
 				b.Set(s, 0)
 				continue
 			} else {
@@ -68,6 +86,6 @@ const (
 	BOARD_EMPTY      = "................................................................................."
 	BOARD_HARD_1     = ".15.....................8....6....1..3.2.....2.............8..2........6........."
 	BOARD_HARD_2     = "....7..2.8.......6.1.2.5...9.54....8.........3....85.1...3.2.8.4.......9.7..6...."
-	SHOW_STATUS      = false
+	SHOW_STATUS      = true
 	STATUS_OVERWRITE = true
 )
