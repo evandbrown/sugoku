@@ -16,23 +16,15 @@ type Square struct {
 	col       int
 }
 
-func (s *Square) String() string {
-	return fmt.Sprintf("(%v,%v) = %v %v", s.row, s.col, s.val, s.available)
-}
-
-func (s *Square) Key() string {
-	return strconv.Itoa(s.row) + strconv.Itoa(s.col)
-}
-
-func (s *Square) AvailString() string {
-	return fmt.Sprintf("%v %v ", mapToArr(s.available), s.val)
-}
-
-func (s *Square) ValString() string {
+func (s Square) String() string {
 	return fmt.Sprintf("%v", strconv.Itoa(s.val))
 }
 
-func (s *Square) NumAvailable() int {
+func (s Square) Key() string {
+	return strconv.Itoa(s.row) + strconv.Itoa(s.col)
+}
+
+func (s Square) NumAvailable() int {
 	i := 0
 	for _, a := range s.available {
 		if a {
@@ -57,7 +49,7 @@ type Board struct {
 	padding int // padding when printing
 }
 
-func (b *Board) Eliminate(s *Square, val int) ([]*Square, error) {
+func (b Board) Eliminate(s *Square, val int) ([]*Square, error) {
 	solved := make([]*Square, 0)
 	peers := b.peers(s)
 	for k, _ := range peers {
@@ -73,7 +65,7 @@ func (b *Board) Eliminate(s *Square, val int) ([]*Square, error) {
 	return solved, nil
 }
 
-func (b *Board) Uneliminate(s *Square, val int) {
+func (b Board) Uneliminate(s *Square, val int) {
 	peers := b.peers(s)
 	peers = append(peers, s)
 	s.available[val] = true
@@ -82,7 +74,7 @@ func (b *Board) Uneliminate(s *Square, val int) {
 	}
 }
 
-func (b *Board) Set(s *Square, val int) ([]*Square, error) {
+func (b Board) Set(s *Square, val int) ([]*Square, error) {
 	if val == 0 {
 		s.val = 0
 		b.Uneliminate(s, val)
@@ -98,8 +90,8 @@ func (b *Board) Set(s *Square, val int) ([]*Square, error) {
 	}
 }
 
-func (b *Board) Duplicate() *Board {
-	b2 := *b
+func (b Board) Duplicate() *Board {
+	b2 := b
 	nc := make([][]*Square, len(b.squares))
 	for r := range nc {
 		nc[r] = make([]*Square, len(b.squares[r]))
@@ -112,7 +104,7 @@ func (b *Board) Duplicate() *Board {
 	return &b2
 }
 
-func (b *Board) Flatten() []*Square {
+func (b Board) Flatten() []*Square {
 	squares := make([]*Square, len(b.squares)*len(b.squares))
 	for r := range b.squares {
 		for c := range b.squares[r] {
@@ -121,14 +113,14 @@ func (b *Board) Flatten() []*Square {
 	}
 	return squares
 }
-func (b *Board) Shuffle(a []int) {
+func (b Board) Shuffle(a []int) {
 	for i := range a {
 		j := rand.Intn(i + 1)
 		a[i], a[j] = a[j], a[i]
 	}
 }
 
-func (b *Board) NextEasiestSquare() *Square {
+func (b Board) NextEasiestSquare() *Square {
 	var next, low *Square
 	for next = b.squares[0][0]; next != nil; next = b.nextSquare(next) {
 		if low == nil && next.val == 0 { // initialize low
@@ -141,7 +133,7 @@ func (b *Board) NextEasiestSquare() *Square {
 	return low
 }
 
-func (b *Board) NextEmptySquare() *Square {
+func (b Board) NextEmptySquare() *Square {
 	var s *Square
 	for s = b.squares[0][0]; s != nil && s.val != 0; {
 		s = b.nextSquare(s)
@@ -149,7 +141,7 @@ func (b *Board) NextEmptySquare() *Square {
 	return s
 }
 
-func (b *Board) peers(s *Square) []*Square {
+func (b Board) peers(s *Square) []*Square {
 	peers := make(map[string]*Square)
 	all := append(b.squaresInRow(s), b.squaresInCol(s)...)
 	all = append(all, b.squaresInGroup(s)...)
@@ -167,12 +159,12 @@ func (b *Board) peers(s *Square) []*Square {
 	return all
 }
 
-func (b *Board) initPossible() {
+func (b Board) initPossible() {
 	for _, s := range b.Flatten() {
 		s.available = b.availableVals(s)
 	}
 }
-func (b *Board) nextSquare(s *Square) *Square {
+func (b Board) nextSquare(s *Square) *Square {
 	if s.row+1 == b.slen*b.slen && s.col+1 == b.slen*b.slen {
 		return nil
 	} else if s.col+1 < b.slen*b.slen {
@@ -182,7 +174,7 @@ func (b *Board) nextSquare(s *Square) *Square {
 	}
 }
 
-func (b *Board) String() string {
+func (b Board) String() string {
 	var board string
 
 	for r := range b.squares {
@@ -193,7 +185,7 @@ func (b *Board) String() string {
 			if c%b.slen == 0 {
 				board += fmt.Sprintf("| ")
 			}
-			board += fmt.Sprintf("%2s ", b.squares[r][c].ValString())
+			board += fmt.Sprintf("%2s ", b.squares[r][c].String())
 		}
 		board += fmt.Sprintf("|\n")
 	}
@@ -201,18 +193,18 @@ func (b *Board) String() string {
 	return board
 }
 
-func (b *Board) availableVals(s *Square) map[int]bool {
-	p := b.possibleVals()
+func (b Board) availableVals(s *Square) map[int]bool {
+	possible := b.possibleVals()
 	peers := b.peers(s)
-	for i := range peers {
-		if peers[i].val != 0 {
-			delete(p, peers[i].val)
+	for _, p := range peers {
+		if p.val != 0 {
+			delete(possible, p.val)
 		}
 	}
-	return p
+	return possible
 }
 
-func (b *Board) possibleVals() map[int]bool {
+func (b Board) possibleVals() map[int]bool {
 	// Map of all possible
 	p := make(map[int]bool)
 	for i := 1; i <= b.slen*b.slen; i++ {
@@ -221,7 +213,7 @@ func (b *Board) possibleVals() map[int]bool {
 	return p
 }
 
-func (b *Board) squaresInRow(s *Square) []*Square {
+func (b Board) squaresInRow(s *Square) []*Square {
 	vals := make([]*Square, b.slen*b.slen)
 	for i := 0; i < len(vals); i++ {
 		vals[i] = b.squares[s.row][i]
@@ -229,7 +221,7 @@ func (b *Board) squaresInRow(s *Square) []*Square {
 	return vals
 }
 
-func (b *Board) squaresInCol(s *Square) []*Square {
+func (b Board) squaresInCol(s *Square) []*Square {
 	vals := make([]*Square, b.slen*b.slen)
 	for i := 0; i < len(vals); i++ {
 		vals[i] = b.squares[i][s.col]
@@ -237,7 +229,7 @@ func (b *Board) squaresInCol(s *Square) []*Square {
 	return vals
 }
 
-func (b *Board) squaresInGroup(s *Square) []*Square {
+func (b Board) squaresInGroup(s *Square) []*Square {
 	squares := make([]*Square, b.slen*b.slen)
 
 	firstSquare := b.firstSquareInGroup(s)
@@ -251,7 +243,7 @@ func (b *Board) squaresInGroup(s *Square) []*Square {
 	return squares
 }
 
-func (b *Board) firstSquareInGroup(s *Square) *Square {
+func (b Board) firstSquareInGroup(s *Square) *Square {
 	var rr, cc int
 	if s.row%b.slen == 0 {
 		rr = s.row
