@@ -259,14 +259,14 @@ func (b Board) firstSquareInGroup(s *Square) *Square {
 }
 
 func ParseBoard(s string) *Board {
-	length := math.Sqrt(float64(len(s)))
-	sq := math.Sqrt(length)
+	length := int(math.Sqrt(float64(len(s))))
+	sq := math.Sqrt(float64(length))
 	board := newBoard(int(sq))
 	for i, c := range s {
 		if c == '.' {
 			c = '0'
 		}
-		board.squares[i/9][i%9] = newSquare(int(c-'0'), i/9, i%9)
+		board.squares[i/length][i%length] = newSquare(int(c-'0'), i/length, i%length)
 	}
 	board.initPossible()
 	return board

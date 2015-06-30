@@ -4,14 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
-	"time"
 )
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	done := make(chan *Board)
 	defer close(done)
-	boards := make([]*Board, 2)
+	boards := make([]*Board, 4)
 	for i := range boards {
 		boards[i] = ParseBoard(BOARD_HARD_1)
 		go solve(boards[i], done)
@@ -28,7 +27,6 @@ func printProgress(boards []*Board, stop chan *Board) {
 					fmt.Printf("\033[3;1H")
 				}
 				for _, b := range boards {
-					fmt.Println(".")
 					fmt.Println(b)
 				}
 			} else {
@@ -42,7 +40,6 @@ func printProgress(boards []*Board, stop chan *Board) {
 					fmt.Printf("\033[3;1H")
 				}
 				for _, b := range boards {
-					fmt.Println(".")
 					fmt.Println(b)
 				}
 			}
@@ -51,7 +48,6 @@ func printProgress(boards []*Board, stop chan *Board) {
 }
 
 func solve(b *Board, done chan *Board) error {
-	time.Sleep(10 * time.Millisecond)
 	s := b.nextEasiestSquare()
 	if s == nil {
 		done <- b
@@ -84,8 +80,9 @@ func solve(b *Board, done chan *Board) error {
 
 const (
 	BOARD_EMPTY      = "................................................................................."
+	BOARD_EMPTY_16   = "................................................................................................................................................................................................................................................................"
 	BOARD_HARD_1     = ".15.....................8....6....1..3.2.....2.............8..2........6........."
 	BOARD_HARD_2     = "....7..2.8.......6.1.2.5...9.54....8.........3....85.1...3.2.8.4.......9.7..6...."
-	SHOW_STATUS      = true
+	SHOW_STATUS      = false
 	STATUS_OVERWRITE = true
 )
