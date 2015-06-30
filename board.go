@@ -20,11 +20,11 @@ func (s Square) String() string {
 	return fmt.Sprintf("%v", strconv.Itoa(s.val))
 }
 
-func (s Square) Key() string {
+func (s Square) key() string {
 	return strconv.Itoa(s.row) + strconv.Itoa(s.col)
 }
 
-func (s Square) NumAvailable() int {
+func (s Square) numAvailable() int {
 	i := 0
 	for _, a := range s.available {
 		if a {
@@ -34,7 +34,7 @@ func (s Square) NumAvailable() int {
 	return i
 }
 
-func (s *Square) Duplicate() *Square {
+func (s *Square) duplicate() *Square {
 	s2 := *s
 	s2.available = make(map[int]bool)
 	for k, v := range s.available {
@@ -49,15 +49,15 @@ type Board struct {
 	padding int // padding when printing
 }
 
-func (b Board) Eliminate(s *Square, val int) ([]*Square, error) {
+func (b Board) eliminate(s *Square, val int) ([]*Square, error) {
 	solved := make([]*Square, 0)
 	peers := b.peers(s)
 	for k, _ := range peers {
-		if peers[k].NumAvailable() == 1 && peers[k].val == 0 && peers[k].val == val {
-			b.Uneliminate(s, val)
+		if peers[k].numAvailable() == 1 && peers[k].val == 0 && peers[k].val == val {
+			b.uneliminate(s, val)
 			return nil, errors.New(fmt.Sprintf("Can't eliminate %v from %v because it's the last value. All peer possibilities were restored", val, peers[k]))
 		}
-		if peers[k].NumAvailable() == 2 {
+		if peers[k].numAvailable() == 2 {
 			solved = append(solved, peers[k])
 		}
 		peers[k].available[val] = false
@@ -65,7 +65,7 @@ func (b Board) Eliminate(s *Square, val int) ([]*Square, error) {
 	return solved, nil
 }
 
-func (b Board) Uneliminate(s *Square, val int) {
+func (b Board) uneliminate(s *Square, val int) {
 	peers := b.peers(s)
 	peers = append(peers, s)
 	s.available[val] = true
@@ -74,13 +74,13 @@ func (b Board) Uneliminate(s *Square, val int) {
 	}
 }
 
-func (b Board) Set(s *Square, val int) ([]*Square, error) {
+func (b Board) set(s *Square, val int) ([]*Square, error) {
 	if val == 0 {
 		s.val = 0
-		b.Uneliminate(s, val)
+		b.uneliminate(s, val)
 		return nil, nil
 	} else {
-		solved, err := b.Eliminate(s, val)
+		solved, err := b.eliminate(s, val)
 		if err != nil {
 			return nil, errors.New(fmt.Sprintf("Cannot set %v at %v as it causes a problem on propagation (%v)", val, s, err))
 		} else {
@@ -90,21 +90,21 @@ func (b Board) Set(s *Square, val int) ([]*Square, error) {
 	}
 }
 
-func (b Board) Duplicate() *Board {
+func (b Board) duplicate() *Board {
 	b2 := b
 	nc := make([][]*Square, len(b.squares))
 	for r := range nc {
 		nc[r] = make([]*Square, len(b.squares[r]))
 		copy(nc[r], b.squares[r])
 		for c := range nc[r] {
-			nc[r][c] = nc[r][c].Duplicate()
+			nc[r][c] = nc[r][c].duplicate()
 		}
 	}
 	b2.squares = nc
 	return &b2
 }
 
-func (b Board) Flatten() []*Square {
+func (b Board) flatten() []*Square {
 	squares := make([]*Square, len(b.squares)*len(b.squares))
 	for r := range b.squares {
 		for c := range b.squares[r] {
@@ -113,27 +113,27 @@ func (b Board) Flatten() []*Square {
 	}
 	return squares
 }
-func (b Board) Shuffle(a []int) {
+func (b Board) shuffle(a []int) {
 	for i := range a {
 		j := rand.Intn(i + 1)
 		a[i], a[j] = a[j], a[i]
 	}
 }
 
-func (b Board) NextEasiestSquare() *Square {
+func (b Board) nextEasiestSquare() *Square {
 	var next, low *Square
 	for next = b.squares[0][0]; next != nil; next = b.nextSquare(next) {
 		if low == nil && next.val == 0 { // initialize low
 			low = next
 		}
-		if next.val == 0 && next.NumAvailable() < low.NumAvailable() { //Mark a new low
+		if next.val == 0 && next.numAvailable() < low.numAvailable() { //Mark a new low
 			low = next
 		}
 	}
 	return low
 }
 
-func (b Board) NextEmptySquare() *Square {
+func (b Board) nextEmptySquare() *Square {
 	var s *Square
 	for s = b.squares[0][0]; s != nil && s.val != 0; {
 		s = b.nextSquare(s)
@@ -146,10 +146,10 @@ func (b Board) peers(s *Square) []*Square {
 	all := append(b.squaresInRow(s), b.squaresInCol(s)...)
 	all = append(all, b.squaresInGroup(s)...)
 	for i := range all {
-		peers[all[i].Key()] = all[i]
+		peers[all[i].key()] = all[i]
 	}
 
-	delete(peers, s.Key())
+	delete(peers, s.key())
 	all = make([]*Square, len(peers))
 	i := 0
 	for _, p := range peers {
@@ -160,7 +160,7 @@ func (b Board) peers(s *Square) []*Square {
 }
 
 func (b Board) initPossible() {
-	for _, s := range b.Flatten() {
+	for _, s := range b.flatten() {
 		s.available = b.availableVals(s)
 	}
 }

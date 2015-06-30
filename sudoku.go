@@ -52,7 +52,7 @@ func printProgress(boards []*Board, stop chan *Board) {
 
 func solve(b *Board, done chan *Board) error {
 	time.Sleep(10 * time.Millisecond)
-	s := b.NextEasiestSquare()
+	s := b.nextEasiestSquare()
 	if s == nil {
 		done <- b
 		return nil
@@ -65,14 +65,14 @@ func solve(b *Board, done chan *Board) error {
 			i++
 		}
 	}
-	b.Shuffle(try)
+	b.shuffle(try)
 	for _, val := range try {
-		_, err := b.Set(s, val)
+		_, err := b.set(s, val)
 		if err != nil {
 			return errors.New(fmt.Sprintf("There was an error trying to solve %v with %v: %v", s, val, err))
 		} else {
 			if err = solve(b, done); err != nil {
-				b.Set(s, 0)
+				b.set(s, 0)
 				continue
 			} else {
 				return nil
